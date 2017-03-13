@@ -14,13 +14,13 @@ import (
 const Xmax = 1920
 const Ymax = 1080
 const PopSize = 10
-const GenePoolSize = 10
+const GenePoolSize = 50
 
 //configuration for producing next gen
 const TournamentK = 4
 const CrossoverRate = 0.6
-const ColorMutationRate = 0.02
-const ShapeMutationRate = 0.02
+const ColorMutationRate = 0.05
+const ShapeMutationRate = 0.05
 
 type Triangle struct {
     x1, y1, x2, y2, x3, y3 float64
@@ -43,7 +43,7 @@ func main() {
     fmt.Println("--- Initializing Population ---")
     gen1 := initializePopulation()
 
-    fmt.Println("Drawing Chromosomes")
+    //fmt.Println("Drawing Chromosomes")
     drawChromosomes(gen1)
 
     infile, _ := os.Open("/home/npzd/Pictures/owsombra.png")
@@ -52,8 +52,9 @@ func main() {
     calculateFitness(&gen1, sourceImg)
 
     newestGen := gen1
-    for p := 0; p < 100; p++ {
+    for p := 0; p < 1000; p++ {
         newest := createNextGeneration(newestGen)
+        fmt.Println("Running generation " + strconv.FormatInt(int64(p), 10))
         drawChromosomes(newest)
         calculateFitness(&newest, sourceImg)
         newestGen = newest
@@ -63,7 +64,7 @@ func main() {
 
 func calculateFitness(chromosomes *[PopSize]Chromosome, sourceImage image.Image) {
     for i := 0; i < PopSize; i++ {
-        fmt.Println("Comparing Chromosome " + strconv.FormatInt(int64(i), 10))
+        //fmt.Println("Comparing Chromosome " + strconv.FormatInt(int64(i), 10))
         diff := 0
         for x := 0; x < Xmax; x++ {
             for y := 0; y < Ymax; y++ {
@@ -82,7 +83,7 @@ func calculateFitness(chromosomes *[PopSize]Chromosome, sourceImage image.Image)
 
 func drawChromosomes(currentGen [PopSize] Chromosome) {
     for i := 0; i < PopSize; i++ {
-        fmt.Println("Drawing Chromosome " + strconv.FormatInt(int64(i), 10))
+        //fmt.Println("Drawing Chromosome " + strconv.FormatInt(int64(i), 10))
         gc := currentGen[i].gc
         drawTriangles(gc, currentGen[i].triangles)
     }
@@ -92,19 +93,34 @@ func createNextGeneration(currentGen [PopSize]Chromosome) (nextGen [PopSize]Chro
     //fmt.Println("Creating generation " + strconv.FormatInt(genNum, 10))
     exportFittestChromosome(currentGen)
     for i := 0; i < PopSize; i++ {
-        parent1 := selectParent(currentGen)
-        parent2 := selectParent(currentGen)
+        //parent1 := selectParent(currentGen)
+        //parent2 := selectParent(currentGen)
 
 
-        if CrossoverRate > rand.Float64() {
-            nextGen[i] = crossover(parent1, parent2)
-        } else{
-            if parent1.fitness > parent2.fitness {
-                nextGen[i] = parent1
-            }else {
-                nextGen[i] = parent2
+        // if CrossoverRate > rand.Float64() {
+        //     nextGen[i] = crossover(parent1, parent2)
+        // } else{
+        //     if parent1.fitness > parent2.fitness {
+        //         nextGen[i] = parent1
+        //     }else {
+        //         nextGen[i] = parent2
+        //     }
+        // }
+        fittest := currentGen[0]
+        for i := 1; i < PopSize; i++ {
+            if currentGen[i].fitness < fittest.fitness {
+                fittest = currentGen[i]
             }
         }
+
+        nextGen[i] = makeCH(fittest)
+
+        // if parent1.fitness < parent2.fitness {
+        //     nextGen[i] = makeCH(parent1)
+        // }else {
+        //     nextGen[i] = makeCH(parent2)
+        // }
+
 
         mutateColor(&nextGen[i].triangles)
         mutateShape(&nextGen[i].triangles)
@@ -112,9 +128,16 @@ func createNextGeneration(currentGen [PopSize]Chromosome) (nextGen [PopSize]Chro
     return nextGen
 }
 
+func makeCH(chrom Chromosome) (chromosome Chromosome) {
+    chromosome.genImage = image.NewRGBA(image.Rect(0, 0, Xmax, Ymax))
+    chromosome.gc = draw2dimg.NewGraphicContext(chromosome.genImage)
+    chromosome.triangles = chrom.triangles
+    return
+}
+
 func mutateColor(triangles *[GenePoolSize]Triangle) {
     for i := 0; i < GenePoolSize; i++ {
-        if ColorMutationRate < rand.Float64() {
+        if ColorMutationRate > rand.Float64() {
             triangles[i].color = generateColor()
         }
     }
@@ -122,7 +145,7 @@ func mutateColor(triangles *[GenePoolSize]Triangle) {
 
 func mutateShape(triangles *[GenePoolSize]Triangle) {
     for i := 0; i < GenePoolSize; i++ {
-        if ColorMutationRate < rand.Float64() {
+        if ShapeMutationRate > rand.Float64() {
             triangles[i].x1 = random(0, Xmax)
             triangles[i].y1 = random(0, Ymax)
             triangles[i].x2 = random(0, Xmax)
@@ -137,15 +160,20 @@ func crossover(chrom1, chrom2 Chromosome) (finalChrom Chromosome) {
     finalChrom.genImage = image.NewRGBA(image.Rect(0, 0, Xmax, Ymax))
     finalChrom.gc = draw2dimg.NewGraphicContext(finalChrom.genImage)
 
-    splitPoint := int(random(1, GenePoolSize))
+    // splitPoint := int(random(1, GenePoolSize))
+    //
+    // for i := 0; i < splitPoint; i++ {
+    //     finalChrom.triangles[i] = chrom1.triangles[i]
+    // }
+    //
+    // for j := splitPoint; j < GenePoolSize; j++ {
+    //     finalChrom.triangles[j] = chrom2.triangles[j]
+    // }
 
-    for i := 0; i < splitPoint; i++ {
-        finalChrom.triangles[i] = chrom1.triangles[i]
-    }
-
-    for j := splitPoint; j < GenePoolSize; j++ {
-        finalChrom.triangles[j] = chrom2.triangles[j]
-    }
+    // for i := 0; i < GenePoolSize; i++ {
+    //     finalChrom.triangles[i] = chrom1.triangles[i]
+    //     finalChrom.triangles[i].color = chrom12.triangles[i].color
+    // }
 
     return
 }
@@ -166,7 +194,7 @@ func exportFittestChromosome(currentGen [PopSize]Chromosome) {
             fittest = currentGen[i]
         }
     }
-    fmt.Println("Fittest: " + strconv.FormatInt(int64(fittest.fitness), 10))
+    fmt.Println("Fittest: " + strconv.FormatInt(int64(fittest.fitness), 10) + "\n")
 
     filename := "/home/npzd/Pictures/generated/00/image" + strconv.FormatInt(time.Now().Unix(), 10) + ".png"
     draw2dimg.SaveToPngFile(filename, fittest.genImage)
